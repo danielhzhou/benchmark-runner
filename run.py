@@ -8,7 +8,6 @@ from config import (
     DEFAULT_BENCH_ITERS,
     DEFAULT_PROFILE_ITERS,
     DEFAULT_TRIALS,
-    detect_jar,
     detect_java,
 )
 from graphs import generate_graphs
@@ -29,7 +28,7 @@ def main():
     parser.add_argument("--trials", type=int, default=DEFAULT_TRIALS,
                         help=f"Number of trials per config (default: {DEFAULT_TRIALS})")
     parser.add_argument("--java", type=str, default=None, help="Path to java binary")
-    parser.add_argument("--jar", type=str, default=None, help="Path to DaCapo jar")
+    parser.add_argument("--jar", type=str, default=None, help="Path to suite jar (auto-detected if omitted)")
     parser.add_argument("--output-dir", type=str, default="results",
                         help="Output directory (default: results/)")
     parser.add_argument("--no-graphs", action="store_true", help="Skip graph generation")
@@ -38,13 +37,13 @@ def main():
 
     # Resolve paths
     java_path = args.java or detect_java()
-    jar_path = args.jar or detect_jar()
+    suite_cls = SUITES[args.suite]
+    jar_path = args.jar or suite_cls.detect_jar()
 
     print(f"Java:  {java_path}")
     print(f"Jar:   {jar_path}")
 
     # Create suite
-    suite_cls = SUITES[args.suite]
     suite = suite_cls(java_path=java_path, jar_path=jar_path)
     suite.validate_setup()
 

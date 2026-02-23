@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 from .base import BenchmarkSuite, RunResult
-from config import BASE_JVM_ARGS
+from config import BASE_JVM_ARGS, detect_jar as _detect_dacapo_jar
 
 KNOWN_BENCHMARKS = [
     "avrora", "batik", "biojava", "eclipse", "fop",
@@ -39,6 +39,10 @@ class DaCapoSuite(BenchmarkSuite):
     def __init__(self, java_path: str, jar_path: str):
         self.java_path = java_path
         self.jar_path = jar_path
+
+    @classmethod
+    def detect_jar(cls) -> str:
+        return _detect_dacapo_jar()
 
     def name(self) -> str:
         return "dacapo"
