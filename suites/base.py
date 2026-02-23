@@ -13,6 +13,13 @@ class RunResult:
 
 
 class BenchmarkSuite(ABC):
+    @classmethod
+    def detect_jar(cls) -> str:
+        """Auto-detect the suite jar. Override in subclasses."""
+        raise FileNotFoundError(
+            f"No jar auto-detection for {cls.__name__}. Use --jar to specify the path."
+        )
+
     @abstractmethod
     def name(self) -> str: ...
 

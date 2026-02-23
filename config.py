@@ -16,6 +16,7 @@ DEFAULT_JAVA_PATTERNS = [
 ]
 
 DEFAULT_JAR_PATTERN = "dacapobench/benchmarks/dacapo-evaluation-git-*.jar"
+DEFAULT_RENAISSANCE_JAR_PATTERN = "renaissance/renaissance-gpl-*.jar"
 
 # Benchmark defaults
 DEFAULT_PROFILE_ITERS = 1
@@ -52,4 +53,18 @@ def detect_jar() -> str:
         return matches[-1]  # newest
     raise FileNotFoundError(
         "Could not find DaCapo jar. Use --jar to specify the path."
+    )
+
+
+def detect_renaissance_jar() -> str:
+    """Auto-detect the Renaissance jar from known paths."""
+    matches = sorted(glob.glob(str(BASE_DIR / DEFAULT_RENAISSANCE_JAR_PATTERN)))
+    if matches:
+        return matches[-1]  # newest
+    # Also check current directory
+    matches = sorted(glob.glob("renaissance-gpl-*.jar") + glob.glob("renaissance-mit-*.jar"))
+    if matches:
+        return matches[-1]
+    raise FileNotFoundError(
+        "Could not find Renaissance jar. Use --jar to specify the path."
     )
