@@ -16,12 +16,12 @@ DEFAULT_JAVA_PATTERNS = [
 ]
 
 DEFAULT_JAR_PATTERN = "dacapobench/benchmarks/dacapo-evaluation-git-*.jar"
-DEFAULT_RENAISSANCE_JAR_PATTERN = "renaissance/renaissance-gpl-*.jar"
+DEFAULT_RENAISSANCE_JAR_PATTERN = "renaissance/target/renaissance-gpl-*.jar"
 
 # Benchmark defaults
 DEFAULT_PROFILE_ITERS = 1
 DEFAULT_BENCH_ITERS = 10
-DEFAULT_TRIALS = 3
+DEFAULT_TRIALS = 1
 
 # JVM flags always passed
 BASE_JVM_ARGS = [

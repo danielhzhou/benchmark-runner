@@ -9,6 +9,17 @@ from suites.base import BenchmarkSuite, RunResult
 from metrics import compute_metrics
 
 
+def _derived_profile_path(base_path: str, benchmark: str) -> str:
+    """Derive the per-benchmark checkpoint path the same way the Renaissance plugin does.
+    E.g. 'foo_trial0.mdox' + 'akka-uct' -> 'foo_trial0-akka-uct.mdox'
+    DaCapo uses the literal path, so this is only needed for Renaissance.
+    """
+    p = Path(base_path)
+    stem = p.stem
+    suffix = p.suffix
+    return str(p.with_name(f"{stem}-{benchmark}{suffix}"))
+
+
 def run_benchmarks(
     suite: BenchmarkSuite,
     benchmarks: list[str],
@@ -50,8 +61,15 @@ def run_benchmarks(
             _save_log(raw_dir / f"{bench}_trial{trial}_profile.log", prof)
             print(f"  -> exit={prof.exit_code}, profile at {profile_path}")
 
-            if not Path(profile_path).exists():
-                print(f"  WARNING: profile file not created at {profile_path}")
+            # Renaissance plugin derives per-benchmark filenames;
+            # DaCapo uses the literal path.
+            actual_profile = (
+                _derived_profile_path(profile_path, bench)
+                if suite.name() == "renaissance"
+                else profile_path
+            )
+            if not Path(actual_profile).exists():
+                print(f"  WARNING: profile file not created at {actual_profile}")
                 bench_data["warm"].append([])
                 bench_data["compile_times"].append(-1.0)
                 continue

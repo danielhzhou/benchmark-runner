@@ -1,5 +1,6 @@
 """Renaissance benchmark suite adapter."""
 
+import glob
 import json
 import re
 import subprocess
@@ -8,6 +9,10 @@ from pathlib import Path
 
 from .base import BenchmarkSuite, RunResult
 from config import BASE_JVM_ARGS, detect_renaissance_jar
+
+# Plugin class shipped with the custom Renaissance build
+PLUGIN_CLASS = "org.renaissance.plugins.profilecheckpoint.ProfileCheckpointPlugin"
+PLUGIN_JAR_GLOB = "plugins/profile-checkpoint/target/plugin-profile-checkpoint-assembly-*.jar"
 
 # Full benchmark list from renaissance 0.16.x (--raw-list output).
 # Excludes the dummy-* test benchmarks.
@@ -35,10 +40,12 @@ def _parse_latencies_from_json(json_path: str, benchmark: str) -> list[float]:
     try:
         with open(json_path) as f:
             data = json.load(f)
+        # Format v6+: timings live under data[benchmark]["results"]
+        # Older format had them under benchmarks[benchmark]["results"]
+        container = data.get("data") or data.get("benchmarks") or {}
         results = (
-            data.get("benchmarks", {})
-                .get(benchmark, {})
-                .get("results", [])
+            container.get(benchmark, {})
+                     .get("results", [])
         )
         # duration_ns is present in Renaissance >= 0.14; convert to ms.
         times = [r["duration_ns"] / 1_000_000 for r in results if "duration_ns" in r]
@@ -55,10 +62,19 @@ def _parse_compile_time(output: str) -> float:
     return float(m.group(1)) if m else -1.0
 
 
+def _find_plugin_jar(renaissance_jar: str) -> str | None:
+    """Locate the profile-checkpoint plugin jar relative to the Renaissance repo root."""
+    # The Renaissance jar lives at <repo>/target/renaissance-gpl-*.jar
+    repo_root = Path(renaissance_jar).resolve().parent.parent
+    matches = sorted(glob.glob(str(repo_root / PLUGIN_JAR_GLOB)))
+    return matches[-1] if matches else None
+
+
 class RenaissanceSuite(BenchmarkSuite):
     def __init__(self, java_path: str, jar_path: str):
         self.java_path = java_path
         self.jar_path = jar_path
+        self.plugin_jar = _find_plugin_jar(jar_path)
 
     @classmethod
     def detect_jar(cls) -> str:
@@ -88,6 +104,11 @@ class RenaissanceSuite(BenchmarkSuite):
             raise FileNotFoundError(f"Java binary not found: {self.java_path}")
         if not Path(self.jar_path).exists():
             raise FileNotFoundError(f"Renaissance jar not found: {self.jar_path}")
+        if not self.plugin_jar:
+            print("WARNING: profile-checkpoint plugin jar not found. "
+                  "Profile/warm runs will not produce checkpoint files.")
+        else:
+            print(f"Plugin: {self.plugin_jar}")
         result = subprocess.run(
             [self.java_path, "-version"],
             capture_output=True, text=True, timeout=30,
@@ -95,11 +116,18 @@ class RenaissanceSuite(BenchmarkSuite):
         if result.returncode != 0:
             raise RuntimeError(f"Java binary failed: {result.stderr}")
 
+    def _plugin_harness_args(self) -> list[str]:
+        """Return Renaissance harness args to load the profile-checkpoint plugin."""
+        if not self.plugin_jar:
+            return []
+        return ["--plugin", f"{self.plugin_jar}!{PLUGIN_CLASS}"]
+
     def _run(
         self,
         benchmark: str,
         n_iters: int,
         extra_jvm_args: list[str] | None = None,
+        extra_harness_args: list[str] | None = None,
     ) -> RunResult:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tf:
             json_out = tf.name
@@ -109,6 +137,10 @@ class RenaissanceSuite(BenchmarkSuite):
             cmd.extend(extra_jvm_args)
         cmd.extend([
             "-jar", self.jar_path,
+        ])
+        if extra_harness_args:
+            cmd.extend(extra_harness_args)
+        cmd.extend([
             "-r", str(n_iters),
             "--json", json_out,
             benchmark,
@@ -137,15 +169,21 @@ class RenaissanceSuite(BenchmarkSuite):
         return self._run(benchmark, n_iters)
 
     def run_profiling(self, benchmark: str, n_iters: int, profile_path: str) -> RunResult:
-        # Same JVM-level profile checkpoint flags as DaCapo; the modified JDK
-        # reads these properties regardless of which benchmark suite is running.
-        return self._run(benchmark, n_iters, [
-            f"-Ddacapo.profilecheckpoint.file={profile_path}",
-        ])
+        return self._run(
+            benchmark, n_iters,
+            extra_jvm_args=[
+                f"-Drenaissance.profilecheckpoint.file={profile_path}",
+            ],
+            extra_harness_args=self._plugin_harness_args(),
+        )
 
     def run_warm(self, benchmark: str, n_iters: int, profile_path: str) -> RunResult:
-        return self._run(benchmark, n_iters, [
-            f"-Ddacapo.profilecheckpoint.file={profile_path}",
-            "-Ddacapo.profilecheckpoint.loadafter=0",
-            "-XX:+EagerCompileAfterLoad",
-        ])
+        return self._run(
+            benchmark, n_iters,
+            extra_jvm_args=[
+                f"-Drenaissance.profilecheckpoint.file={profile_path}",
+                "-Drenaissance.profilecheckpoint.loadafter=1",
+                "-XX:+EagerCompileAfterLoad",
+            ],
+            extra_harness_args=self._plugin_harness_args(),
+        )

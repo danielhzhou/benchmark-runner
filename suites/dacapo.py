@@ -92,6 +92,6 @@ class DaCapoSuite(BenchmarkSuite):
     def run_warm(self, benchmark: str, n_iters: int, profile_path: str) -> RunResult:
         return self._run(benchmark, n_iters, [
             f"-Ddacapo.profilecheckpoint.file={profile_path}",
-            "-Ddacapo.profilecheckpoint.loadafter=0",
+            "-Ddacapo.profilecheckpoint.loadafter=1",
             "-XX:+EagerCompileAfterLoad",
         ])
