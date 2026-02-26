@@ -27,6 +27,7 @@ def run_benchmarks(
     bench_iters: int,
     trials: int,
     output_dir: str,
+    cold_only: bool = False,
 ) -> dict:
     """Run all benchmarks and return results dict."""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -54,6 +55,9 @@ def run_benchmarks(
             _save_log(raw_dir / f"{bench}_trial{trial}_cold.log", cold)
             bench_data["cold"].append(cold.iteration_times)
             print(f"  -> {len(cold.iteration_times)} iterations parsed, exit={cold.exit_code}")
+
+            if cold_only:
+                continue
 
             # Profiling run
             print(f"[profile] {bench} ({profile_iters} iters)")

@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--output-dir", type=str, default="results",
                         help="Output directory (default: results/)")
     parser.add_argument("--no-graphs", action="store_true", help="Skip graph generation")
+    parser.add_argument("--cold-only", action="store_true", help="Run only the cold phase (skip profiling and warm runs)")
 
     args = parser.parse_args()
 
@@ -67,6 +68,7 @@ def main():
         bench_iters=args.bench_iters,
         trials=args.trials,
         output_dir=args.output_dir,
+        cold_only=args.cold_only,
     )
 
     # Graphs
