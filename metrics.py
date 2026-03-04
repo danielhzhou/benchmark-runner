@@ -30,8 +30,8 @@ def compute_metrics(all_results: dict) -> dict:
         m = {}
 
         if cold:
-            # Optimal = mean of last 10 cold iterations (or all if fewer)
-            tail = cold[-10:] if len(cold) >= 10 else cold
+            # Optimal = mean of last 5 cold iterations (steady state)
+            tail = cold[-5:] if len(cold) >= 5 else cold
             cold_optimal = statistics.mean(tail)
             m["cold_optimal"] = cold_optimal
             m["optimal_speedup"] = cold[0] / cold_optimal if cold_optimal > 0 else 0
@@ -47,16 +47,27 @@ def compute_metrics(all_results: dict) -> dict:
             m["optimal_speedup"] = 0
             m["cold_time_to_optimal"] = -1
 
-        # Our improvement: cold[0] / warm[2]
-        warm_target = warm[2] if len(warm) > 2 else (warm[-1] if warm else 0)
-        m["warm_target"] = warm_target
-        m["our_improvement"] = cold[0] / warm_target if cold and warm_target > 0 else 0
-
-        # Closeness to optimal curve: cold[N] / warm[2] for all N
-        if warm_target > 0 and cold:
-            m["closeness_ratio"] = [c / warm_target for c in cold]
+        # Per-iteration speedup: cold[i] / warm[i] for each iteration
+        n = min(len(cold), len(warm))
+        if n > 0:
+            per_iter_speedup = [cold[i] / warm[i] if warm[i] > 0 else 0 for i in range(n)]
+            m["per_iter_speedup"] = per_iter_speedup
+            m["first_iter_speedup"] = per_iter_speedup[0]
+            m["mean_speedup"] = statistics.mean(per_iter_speedup)
         else:
-            m["closeness_ratio"] = []
+            m["per_iter_speedup"] = []
+            m["first_iter_speedup"] = 0
+            m["mean_speedup"] = 0
+
+        # Warm time to optimal: first warm index within 10% of min(warm)
+        if warm:
+            warm_min = min(warm)
+            warm_threshold = warm_min * 1.1
+            m["warm_time_to_optimal"] = next(
+                (i for i, t in enumerate(warm) if t <= warm_threshold), len(warm)
+            )
+        else:
+            m["warm_time_to_optimal"] = -1
 
         # Compile time
         m["compile_time_median"] = statistics.median(compile_times) if compile_times else -1
