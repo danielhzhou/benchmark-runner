@@ -107,9 +107,10 @@ def _convergence_plot(metrics: dict, benchmarks: list[str], out: Path) -> None:
         if warm:
             ax.plot(range(1, len(warm) + 1), warm,
                     label="Warm (with profile)", **LINE_KW_WARM)
-            speedup = m.get("first_iter_speedup", 0)
-            if speedup > 0:
-                _add_speedup_badge(ax, f"1st iter: {speedup:.2f}×")
+            first_sp = m.get("first_iter_speedup", 0)
+            mean_sp = m.get("mean_speedup", 0)
+            if first_sp > 0:
+                _add_speedup_badge(ax, f"1st iter: {first_sp:.2f}×  Mean: {mean_sp:.2f}×")
 
         _style_ax(ax, bench)
         ax.legend(**LEGEND_FONT, framealpha=0.9, edgecolor="#dddddd")

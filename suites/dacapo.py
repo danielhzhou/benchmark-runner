@@ -9,7 +9,8 @@ from config import BASE_JVM_ARGS, detect_jar as _detect_dacapo_jar
 
 KNOWN_BENCHMARKS = [
     "avrora", "batik", "biojava", "eclipse", "fop",
-    "graphchi", "h2", "jme", "kafka",
+    "graphchi", "h2", "jme", "kafka", "luindex",
+    "lusearch", "pmd", "sunflow", "tomcat", "xalan",
 ]
 
 WARMUP_PATTERN = re.compile(r"completed warmup \d+ in (\d+) msec")
@@ -109,4 +110,10 @@ class DaCapoSuite(BenchmarkSuite):
         return self._run(benchmark, n_iters, [
             f"-Ddacapo.profilecheckpoint.file={profile_path}",
             "-XX:+EagerCompileAfterLoad",
+            "-XX:+EagerInitAfterLoad",
+            "-XX:EagerInitAfterLoadAllowlist=*",
+            # Deny list: skip classes with native deps that cause class-init
+            # poisoning (sun/font/*, sun/management/*, com/sun/management/*)
+            "-XX:EagerInitAfterLoadDenylist="
+            "sun/font/*,sun/management/*,com/sun/management/*",
         ])
