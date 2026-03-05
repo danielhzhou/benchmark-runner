@@ -9,25 +9,42 @@ from config import BASE_JVM_ARGS, detect_jar as _detect_dacapo_jar
 
 KNOWN_BENCHMARKS = [
     "avrora", "batik", "biojava", "eclipse", "fop",
-    "graphchi", "h2", "jme", "kafka",
+    "graphchi", "h2", "jme", "kafka", "luindex",
+    "lusearch", "pmd", "sunflow", "tomcat", "xalan",
 ]
 
 WARMUP_PATTERN = re.compile(r"completed warmup \d+ in (\d+) msec")
 FINAL_PATTERN = re.compile(r"PASSED in (\d+) msec")
+PROCESSED_PATTERN = re.compile(r"processed \d+ requests in (\d+) msec")
 COMPILE_TIME_PATTERN = re.compile(r"ProfileCheckpoint: load\+compile took (\d+) ms")
 
 
 def _parse_latencies(output: str) -> list[float]:
-    latencies = []
+    """Parse iteration times from DaCapo output.
+
+    Some benchmarks (kafka, h2, jme) report both a "completed warmup" time
+    (which includes server setup/teardown overhead) and a "processed N requests
+    in X msec" time (actual workload). When the processed-requests line is
+    present, use it instead since it measures the real workload performance.
+    """
+    warmup_times = []
+    processed_times = []
     for line in output.split("\n"):
         m = WARMUP_PATTERN.search(line)
         if m:
-            latencies.append(float(m.group(1)))
+            warmup_times.append(float(m.group(1)))
             continue
         m = FINAL_PATTERN.search(line)
         if m:
-            latencies.append(float(m.group(1)))
-    return latencies
+            warmup_times.append(float(m.group(1)))
+            continue
+        m = PROCESSED_PATTERN.search(line)
+        if m:
+            processed_times.append(float(m.group(1)))
+    # Prefer processed-request times when they match 1:1 with warmup iterations
+    if processed_times and len(processed_times) == len(warmup_times):
+        return processed_times
+    return warmup_times
 
 
 def _parse_compile_time(output: str) -> float:
@@ -92,6 +109,11 @@ class DaCapoSuite(BenchmarkSuite):
     def run_warm(self, benchmark: str, n_iters: int, profile_path: str) -> RunResult:
         return self._run(benchmark, n_iters, [
             f"-Ddacapo.profilecheckpoint.file={profile_path}",
-            "-Ddacapo.profilecheckpoint.loadafter=1",
             "-XX:+EagerCompileAfterLoad",
+            "-XX:+EagerInitAfterLoad",
+            "-XX:EagerInitAfterLoadAllowlist=*",
+            # Deny list: skip classes with native deps that cause class-init
+            # poisoning (sun/font/*, sun/management/*, com/sun/management/*)
+            "-XX:EagerInitAfterLoadDenylist="
+            "sun/font/*,sun/management/*,com/sun/management/*",
         ])
