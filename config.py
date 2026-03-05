@@ -10,9 +10,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Default paths (auto-detected relative to BASE_DIR)
 DEFAULT_JAVA_PATTERNS = [
-    "jdk25u/build/macosx-aarch64-server-release/jdk/bin/java",
-    "jdk25u/build/linux-x86_64-server-release/jdk/bin/java",
-    "jdk25u/build/linux-aarch64-server-release/jdk/bin/java",
+    "jdk25u/build/macosx-aarch64-server-release/images/jdk/bin/java",
+    "jdk25u/build/linux-x86_64-server-release/images/jdk/bin/java",
+    "jdk25u/build/linux-aarch64-server-release/images/jdk/bin/java",
 ]
 
 DEFAULT_JAR_PATTERN = "dacapobench/benchmarks/dacapo-evaluation-git-*.jar"
