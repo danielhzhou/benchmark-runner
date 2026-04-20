@@ -28,10 +28,14 @@ def run_benchmarks(
     trials: int,
     output_dir: str,
     cold_only: bool = False,
+    run_dir: str | None = None,
 ) -> dict:
     """Run all benchmarks and return results dict."""
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = Path(output_dir) / ts
+    if run_dir is None:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_dir = Path(output_dir) / ts
+    else:
+        run_dir = Path(run_dir)
     raw_dir = run_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -66,12 +70,14 @@ def run_benchmarks(
             print(f"  -> exit={prof.exit_code}, profile at {profile_path}")
 
             # Renaissance plugin derives per-benchmark filenames;
-            # DaCapo uses the literal path.
-            actual_profile = (
-                _derived_profile_path(profile_path, bench)
-                if suite.name() == "renaissance"
-                else profile_path
-            )
+            # DaCapo uses the literal path;
+            # DaCapo-MDO uses .mdo extension instead of .mdox.
+            if suite.name() == "renaissance":
+                actual_profile = _derived_profile_path(profile_path, bench)
+            elif suite.name() == "dacapo-mdo":
+                actual_profile = str(Path(profile_path).with_suffix(".mdo"))
+            else:
+                actual_profile = profile_path
             if not Path(actual_profile).exists():
                 print(f"  WARNING: profile file not created at {actual_profile}")
                 bench_data["warm"].append([])

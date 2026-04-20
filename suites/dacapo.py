@@ -53,9 +53,10 @@ def _parse_compile_time(output: str) -> float:
 
 
 class DaCapoSuite(BenchmarkSuite):
-    def __init__(self, java_path: str, jar_path: str):
+    def __init__(self, java_path: str, jar_path: str, size: str = "small"):
         self.java_path = java_path
         self.jar_path = jar_path
+        self.size = size
 
     @classmethod
     def detect_jar(cls) -> str:
@@ -84,7 +85,7 @@ class DaCapoSuite(BenchmarkSuite):
         cmd = [self.java_path] + list(BASE_JVM_ARGS)
         if extra_jvm_args:
             cmd.extend(extra_jvm_args)
-        cmd.extend(["-jar", self.jar_path, "-n", str(n_iters), "-s", "small", benchmark])
+        cmd.extend(["-jar", self.jar_path, "-n", str(n_iters), "-s", self.size, benchmark])
 
         print(f"  Running: {' '.join(cmd)}")
         result = subprocess.run(

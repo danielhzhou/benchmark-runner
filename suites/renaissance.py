@@ -71,7 +71,9 @@ def _find_plugin_jar(renaissance_jar: str) -> str | None:
 
 
 class RenaissanceSuite(BenchmarkSuite):
-    def __init__(self, java_path: str, jar_path: str):
+    def __init__(self, java_path: str, jar_path: str, size: str = "small"):
+        # `size` is accepted for interface uniformity with DaCapo suites but
+        # ignored — Renaissance benchmarks don't have a -s sizing flag.
         self.java_path = java_path
         self.jar_path = jar_path
         self.plugin_jar = _find_plugin_jar(jar_path)

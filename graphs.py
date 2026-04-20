@@ -113,6 +113,7 @@ def _convergence_plot(metrics: dict, benchmarks: list[str], out: Path) -> None:
                 _add_speedup_badge(ax, f"1st iter: {first_sp:.2f}×  Mean: {mean_sp:.2f}×")
 
         _style_ax(ax, bench)
+        ax.set_ylim(bottom=0)
         ax.legend(**LEGEND_FONT, framealpha=0.9, edgecolor="#dddddd")
 
     _hide_empty(axes, len(benchmarks), rows, cols)
